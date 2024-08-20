@@ -1,6 +1,8 @@
 *.db
 config.properties
 
+.idea/
+
 ## Intellij auto generated all of the below:
 target/
 !.mvn/wrapper/maven-wrapper.jar
