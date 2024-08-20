@@ -7,6 +7,8 @@ config.properties
 
 ## don't really care for this
 .idea/
+# or this
+**/quotes.txt
 
 ## Intellij auto generated all of the below:
 target/
