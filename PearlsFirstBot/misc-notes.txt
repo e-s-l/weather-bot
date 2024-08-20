@@ -1,0 +1,13 @@
+# Rando Pieces
+
+CREATE TABLE IF NOT EXISTS chat_status (
+    chat_id LONG PRIMARY KEY,
+        echo_enabled BOOLEAN,
+            wx_requested BOOLEAN
+            );
+
+            CREATE TABLE IF NOT EXISTS user_locations (
+                chat_id LONG PRIMARY KEY,
+                    latitude DOUBLE,
+                        longitude DOUBLE
+                        );

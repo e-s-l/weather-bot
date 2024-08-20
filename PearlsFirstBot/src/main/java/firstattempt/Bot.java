@@ -1,9 +1,9 @@
 package firstattempt;
 
-// logging
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-// telegram bot api
+
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -12,11 +12,10 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
-// mutable arrays
+
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-//
+
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 
@@ -26,24 +25,31 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
     private final TelegramClient telegramClient;
     private WeatherService weatherService = null;
     private final Logger logger;
-
     private final String botOptions;
-
-    // these should really be a database or something, no?
-    private final ArrayList<Long> currentChatIds = new ArrayList<>();
-    private final ArrayList<Long> currentEchoChatIds = new ArrayList<>();
-    // Temporary storage for user locations
-    private final HashMap<Long, Location> userLocations = new HashMap<>();
+    private final Quoter quoter = new Quoter();
 
     public Bot(String botToken) {
         telegramClient = new OkHttpTelegramClient(botToken);
         weatherService = new WeatherService();
         logger = LoggerFactory.getLogger(Bot.class);
+        BotDatabase.initializeDatabase();   // Utility class
         botOptions = """
                 My options are:
-                /echo to toggle echos
-                /info for any information
-                /wx for weather data.""";
+                
+                /echo to toggle echos,
+                
+                /info for any information,
+                
+                /wx for weather data,
+                
+                /fortune for a fortune,
+                
+                /clear to start again.""";
+            /*
+                /remindme for reminders,
+                /pester to be pestered,
+                /update to update location
+             */
     }
 
     @Override
@@ -52,45 +58,47 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
             long chatId = update.getMessage().getChatId();
 
             if (update.getMessage().hasText()) {
-                //
                 String receivedMsg = update.getMessage().getText();
-                logger.info("Received: {} from {}", receivedMsg, Long.toString(chatId));
+                logger.info("Received: {} from {}", receivedMsg, chatId);
                 // other info. from received message
                 String userFirstName = update.getMessage().getChat().getFirstName();
                 String userLastName = update.getMessage().getChat().getLastName();
                 String userUsername = update.getMessage().getChat().getUserName();
                 long userId = update.getMessage().getChat().getId();
 
-                if (currentChatIds.contains(chatId)) {
+                if (BotDatabase.isChatActive(chatId)) {
                     switch (receivedMsg) {
                         case "/echo" -> {
                             logger.info("/echo called.");
-                            if (!currentEchoChatIds.contains(chatId)) {
-                                currentEchoChatIds.add(chatId);
-                                sendMsg(chatId, "Echoing is now on.");
-                            } else {
-                                currentEchoChatIds.remove(chatId);
-                                sendMsg(chatId, "Echoing is now off.");
-                            }
+                            boolean echoEnabled = !BotDatabase.isEchoEnabled(chatId);
+                            BotDatabase.saveChatStatus(chatId, echoEnabled, BotDatabase.isWxRequested(chatId));
+                            sendMsg(chatId, "Echoing is now " + (echoEnabled ? "on." : "off."));
                         }
                         case "/info" -> {
                             logger.info("/info called.");
                             String infoMsg = "You are " + userFirstName + " " + userLastName +
-                                    ".\nUsername & id: " + userUsername + " " + userId +
+                                    ".\nUsername & ID: " + userUsername + " " + userId +
                                     ".\nThis chat ID is: " + chatId + "\n\n" + botOptions;
                             sendMsg(chatId, infoMsg);
                         }
                         case "/wx" -> {
                             logger.info("/wx called.");
-                            // if we don't know the location, ask for it
-                            if (!userLocations.containsKey(chatId)) {
+                            BotDatabase.saveChatStatus(chatId, BotDatabase.isEchoEnabled(chatId), true);
+                            if (BotDatabase.getUserLocation(chatId) == null) {
                                 sendLocationRequest(chatId);
                             } else {
                                 sendWeatherMsg(chatId);
                             }
                         }
+                        case "/fortune" -> {
+                            sendMsg(chatId, quoter.generate());
+                        }
+                        case "/clear" -> {
+                            BotDatabase.deleteUserData(chatId);
+                            sendMsg(chatId, "Deleted chat status & location for user.");
+                        }
                         default -> {
-                            if (currentEchoChatIds.contains(chatId)) {
+                            if (BotDatabase.isEchoEnabled(chatId) && receivedMsg.charAt(0) != '/') {
                                 sendMsg(chatId, receivedMsg);
                             } else {
                                 sendMsg(chatId, botOptions);
@@ -100,19 +108,17 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
                 } else {
                     if (receivedMsg.equals("/start")) {
                         logger.info("/start called.");
-                        currentChatIds.add(chatId);
-                        sendMsg(chatId, "Hello. " + botOptions);
+                        BotDatabase.saveChatStatus(chatId, false, false);
+                        sendMsg(chatId, "Hello, " + userFirstName + ".\n" + botOptions);
                     } else {
                         sendMsg(chatId, "Send /start to start...");
                     }
                 }
             }
-            if (update.getMessage().hasLocation()) {
-                // Store the location for the user
+            if (update.getMessage().hasLocation() && BotDatabase.isWxRequested(chatId)) {
                 Location location = update.getMessage().getLocation();
-                userLocations.put(chatId, location);
+                BotDatabase.saveUserLocation(chatId, location.getLatitude(), location.getLongitude());
                 sendWeatherMsg(chatId);
-                // sendMsg(chatId, "Location received. Type /wx to get the weather.");
             }
         }
     }
@@ -133,10 +139,10 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void sendWeatherMsg(long chatId) {
-        // if we have it, store it
-        Location location = userLocations.get(chatId);
+        Location location = BotDatabase.getUserLocation(chatId);
+        assert location != null;
         String weatherInfo = weatherService.getWeather(location.getLatitude(), location.getLongitude());
-        String wxMsg = String.format("Weather at location:\n(%.2f, %.2f)\n", location.getLatitude(), location.getLongitude()) +
+        String wxMsg = String.format("Weather at location:\n%.2f, %.2f\n\n", location.getLatitude(), location.getLongitude()) +
                 weatherInfo;
         sendMsg(chatId, wxMsg);
     }
@@ -144,19 +150,15 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
     private void sendLocationRequest(long chatId) {
         KeyboardButton locationButton = new KeyboardButton("Share Location");
         locationButton.setRequestLocation(true);
-
         KeyboardRow keyboardRow = new KeyboardRow();
         keyboardRow.add(locationButton);
-
         List<KeyboardRow> keyboardRows = new ArrayList<>();
         keyboardRows.add(keyboardRow);
-
         ReplyKeyboardMarkup keyboardMarkup = ReplyKeyboardMarkup.builder()
                 .keyboard(keyboardRows)
                 .resizeKeyboard(true)
                 .oneTimeKeyboard(true)
                 .build();
-
         SendMessage message = SendMessage.builder()
                 .chatId(chatId)
                 .text("Please share your location to get the weather.")
@@ -168,5 +170,4 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
             logger.error(e.getMessage(), e);
         }
     }
-
 }
