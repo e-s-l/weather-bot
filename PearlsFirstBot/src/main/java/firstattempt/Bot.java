@@ -35,15 +35,10 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
         BotDatabase.initializeDatabase();   // Utility class
         botOptions = """
                 My options are:
-                
                 /echo to toggle echos,
-                
                 /info for any information,
-                
                 /wx for weather data,
-                
                 /fortune for a fortune,
-                
                 /clear to start again.""";
             /*
                 /remindme for reminders,
@@ -142,7 +137,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
         Location location = BotDatabase.getUserLocation(chatId);
         assert location != null;
         String weatherInfo = weatherService.getWeather(location.getLatitude(), location.getLongitude());
-        String wxMsg = String.format("Weather at location:\n%.2f, %.2f\n\n", location.getLatitude(), location.getLongitude()) +
+        String wxMsg = String.format("Weather at location:\n(%.2f, %.2f)\n", location.getLatitude(), location.getLongitude()) +
                 weatherInfo;
         sendMsg(chatId, wxMsg);
     }
