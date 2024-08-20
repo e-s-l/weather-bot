@@ -1,6 +1,11 @@
-*.db
+
+## dont commit the database
+**/*.db
+
+## secrets
 config.properties
 
+## don't really care for this
 .idea/
 
 ## Intellij auto generated all of the below:
