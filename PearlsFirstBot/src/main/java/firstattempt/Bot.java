@@ -1,6 +1,5 @@
 package firstattempt;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +17,6 @@ import java.util.List;
 
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
-
 
 public class Bot implements LongPollingSingleThreadUpdateConsumer {
 
@@ -71,9 +69,14 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
                         }
                         case "/info" -> {
                             logger.info("/info called.");
-                            String infoMsg = "You are " + userFirstName + " " + userLastName +
-                                    ".\nUsername & ID: " + userUsername + " " + userId +
+
+                            String infoMsg = "";
+                            if (userFirstName != null || userLastName != null) {
+                                infoMsg += "You are " + userFirstName + " " + userLastName;
+                            }
+                            infoMsg += ".\nUsername & ID: " + userUsername + " " + userId +
                                     ".\nThis chat ID is: " + chatId + "\n\n" + botOptions;
+
                             sendMsg(chatId, infoMsg);
                         }
                         case "/wx" -> {

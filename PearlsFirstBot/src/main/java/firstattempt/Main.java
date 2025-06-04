@@ -1,27 +1,37 @@
 package firstattempt;
 
-
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
+
+/*
+TODO:
+- redirect logs to file
+-
+*/
 
 public class Main {
 
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
-
     public static void main(String[] args) {
 
         Properties properties = new Properties();
-        String propertiesFilePath = "src/main/resources/config.properties";
+        String propertiesFilePath = "/config.properties";
 
+        /*
         try (FileInputStream fis = new FileInputStream(propertiesFilePath)) {
             properties.load(fis);
+        } catch (IOException e) {
+            logger.error("Error reading configuration file: ", e);
+            return;
+        }
+        */
+
+        try {
+            properties.load(Main.class.getResourceAsStream(propertiesFilePath));
         } catch (IOException e) {
             logger.error("Error reading configuration file: ", e);
             return;

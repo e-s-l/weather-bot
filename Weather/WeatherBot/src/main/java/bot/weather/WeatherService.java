@@ -1,4 +1,4 @@
-package firstattempt;
+package bot.weather;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,16 +8,18 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import com.google.common.util.concurrent.RateLimiter;
 
 public class WeatherService {
-    private static final String USER_AGENT = "ATelegramBot/0.1 (e-sullivan-lester@proton.me)";
+    private static final String USER_AGENT = "ATelegramBot/0.2 github.com/e-s-l";
     private static final String API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%s&lon=%s";
 
     private final ObjectMapper objectMapper;
     private final Logger logger;
+    private static final RateLimiter limiter = RateLimiter.create(1.0);
 
     public WeatherService() {
-        this.objectMapper = new ObjectMapper();
+        objectMapper = new ObjectMapper();
         logger = LoggerFactory.getLogger(WeatherService.class);
     }
 
@@ -27,19 +29,34 @@ public class WeatherService {
             HttpResponse<String> response;
 
             try (HttpClient client = HttpClient.newHttpClient()) {
+                // concurrently, don't overload the api, thanks joshua
+                limiter.acquire();
+
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(url))
                         .header("User-Agent", USER_AGENT)
                         .build();
                 response = client.send(request, HttpResponse.BodyHandlers.ofString());
-                /*
-                  need to add a time check here somewhere so cant send too many requests
-                 */
+
+                if (response.statusCode() != 200) {
+                    logger.warn("bad response: {}", response.statusCode());
+                    throw new Exception();
+                }
+
+            } catch (Exception e) {
+                logger.warn("Exception thrown while polling weather data api.");
+                return "Problem accessing weather data.";
             }
 
             JsonNode jsonNode = objectMapper.readTree(response.body());
-            JsonNode timeSeries = jsonNode.path("properties").path("timeseries").get(0);
-            JsonNode details = timeSeries.path("data").path("instant").path("details");
+
+            JsonNode timeSeries = jsonNode.path("properties").path("timeseries");
+
+            if (!timeSeries.isArray() || timeSeries.isEmpty()) {
+                return "Weather data unavailable.";
+            }
+
+            JsonNode details = timeSeries.get(0).path("data").path("instant").path("details");
 
             double temperature = details.path("air_temperature").asDouble();
             double windSpeed = details.path("wind_speed").asDouble();
@@ -50,6 +67,7 @@ public class WeatherService {
 
             return String.format("Temperature: %.2f°C\nWind Speed: %.2f m/s\nHumidity: %.2f%%\nPressure: %.2f hPa\nCloud Coverage: %.2f%%\nPrecipitation: %.2f mm",
                     temperature, windSpeed, humidity, pressure, cloudCoverage, precipitation);
+
 
         } catch (Exception e) {
             logger.error(e.getMessage(), e);

@@ -4,14 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 public class WeatherService {
-    private static final String USER_AGENT = "ATelegramBot/0.1 (e-sullivan-lester@proton.me)";
+    private static final String USER_AGENT = "ATelegramBot/0.2 github.com/e-s-l";
     private static final String API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%s&lon=%s";
 
     private final ObjectMapper objectMapper;

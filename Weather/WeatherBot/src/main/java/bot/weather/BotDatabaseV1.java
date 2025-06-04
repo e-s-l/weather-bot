@@ -1,32 +1,23 @@
-package firstattempt;
+package bot.weather;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.telegram.telegrambots.meta.api.objects.Location;
 
-public class BotDatabase {
+import java.sql.*;
 
-    /*
-    Utility class (not an object) that handles the interaction between each instance of the bot
-    and the (static) db
-     */
+public class BotDatabaseV1 {
 
-   // private static final String DB_URL = "jdbc:sqlite:src/main/resources/databases/bot-data.db";
+    /* Utility class handles the interaction between each instance of the bot and the database. */
 
-    static String dbPath = "databases/bot-data.db"; // Relative path
-   // static String DB_URL = "jdbc:sqlite:" + new File(dbPath).getAbsolutePath();
-
-    static String DB_URL = "jdbc:sqlite:%s".formatted(BotDatabase.class.getResourceAsStream(dbPath));
-    //
-
-    private static final Logger logger = LoggerFactory.getLogger(BotDatabase.class);
+    // the form for internal to the jar
+    // static String dbPath = "databases/botData.db"; // Relative path
+    //static String DB_URL = "jdbc:sqlite:%s".formatted(BotDatabase.class.getResourceAsStream(dbPath));
+    // the file form (for testing)
+    private static final String DB_URL = "jdbc:sqlite:src/main/resources/databases/bot-data.db";
+    // not sure what this if for again:
+    // static String DB_URL = "jdbc:sqlite:" + new File(dbPath).getAbsolutePath();
+    private static final Logger logger = LoggerFactory.getLogger(BotDatabaseV1.class);
 
     public static void initializeDatabase() {
 
@@ -39,10 +30,26 @@ public class BotDatabase {
         try (Connection connection = DriverManager.getConnection(DB_URL)) {
             if (connection != null) {
                 try (Statement statement = connection.createStatement()) {
+
+                    /*
+
+                    String createUserStatusTable = """
+                        CREATE TABLE IF NOT EXISTS bot_status (
+                            chat_id LONG PRIMARY KEY,
+                            user_name STRING,
+                            user_first_name STRING,
+                            user_last_name STRING,
+                            user_id LONG,
+                            first_contact DOUBLE,   // time object, however this is handled in java
+                            last_contact DOUBLE     // as above, but this should probably be in the below...
+                        );
+                    """;
+                    statement.execute(createUserStatusTable);
+                     */
+
                     String createChatStatusTable = """
                         CREATE TABLE IF NOT EXISTS chat_status (
                             chat_id LONG PRIMARY KEY,
-                            echo_enabled BOOLEAN,
                             wx_requested BOOLEAN
                         );
                     """;
@@ -63,14 +70,13 @@ public class BotDatabase {
         }
     }
 
-    public static void saveChatStatus(long chatId, boolean echoEnabled, boolean wxRequested) {
-        String sql = "REPLACE INTO chat_status(chat_id, echo_enabled, wx_requested) VALUES(?, ?, ?)";
+    public static void saveChatStatus(long chatId, boolean wxRequested) {
+        String sql = "REPLACE INTO chat_status(chat_id, wx_requested) VALUES(?, ?)";
 
         try (Connection connection = DriverManager.getConnection(DB_URL);
-            PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, chatId);
-            statement.setBoolean(2, echoEnabled);
-            statement.setBoolean(3, wxRequested);
+            statement.setBoolean(2, wxRequested);
             statement.executeUpdate();
         } catch (SQLException e) {
             logger.error(e.getMessage(), e);
@@ -132,23 +138,6 @@ public class BotDatabase {
             logger.error(e.getMessage(), e);
             return false;
         }
-    }
-
-    public static boolean isEchoEnabled(long chatId) {
-        String sql = "SELECT echo_enabled FROM chat_status WHERE chat_id = ?";
-
-        try (Connection connection = DriverManager.getConnection(DB_URL)) {
-            try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setLong(1, chatId);
-                ResultSet rs = statement.executeQuery();
-                if (rs.next()) {
-                    return rs.getBoolean("echo_enabled");
-                }
-            }
-        } catch (SQLException e) {
-            logger.error(e.getMessage(), e);
-        }
-        return false;
     }
 
     public static boolean isWxRequested(long chatId) {

@@ -22,7 +22,7 @@ public class PopulateFortuneDatabase {
                         String createChatStatusTable = """
                                     CREATE TABLE IF NOT EXISTS quotes (
                                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                        quote TEXT NOT NULL,
+                                        quote TEXT NOT NULL
                                     );
                                 """;
                         statement.execute(createChatStatusTable);
@@ -57,7 +57,7 @@ public class PopulateFortuneDatabase {
     /*
     When you're gettin gconfused about relative file paths...
      */
-    public static void mainDEBUG(String[] args){
+    public static void mainD(String[] args){
         String filePath = "src/main/resources/fortune-generator/quotes.txt";
         File file = new File(filePath);
         System.out.println("Absolute path: " + file.getAbsolutePath());

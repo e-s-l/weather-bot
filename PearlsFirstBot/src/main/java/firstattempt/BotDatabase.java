@@ -1,16 +1,14 @@
 package firstattempt;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
 import org.telegram.telegrambots.meta.api.objects.Location;
 
 public class BotDatabase {
@@ -20,13 +18,28 @@ public class BotDatabase {
     and the (static) db
      */
 
-    private static final String DB_URL = "jdbc:sqlite:src/main/resources/databases/bot-data.db";
+   // private static final String DB_URL = "jdbc:sqlite:src/main/resources/databases/bot-data.db";
+
+    static String dbPath = "databases/bot-data.db"; // Relative path
+   // static String DB_URL = "jdbc:sqlite:" + new File(dbPath).getAbsolutePath();
+
+    static String DB_URL = "jdbc:sqlite:%s".formatted(BotDatabase.class.getResourceAsStream(dbPath));
+    //
+
     private static final Logger logger = LoggerFactory.getLogger(BotDatabase.class);
 
     public static void initializeDatabase() {
+
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            System.err.println("Failed to register JDBC driver: " + e.getMessage());
+        }
+
         try (Connection connection = DriverManager.getConnection(DB_URL)) {
             if (connection != null) {
                 try (Statement statement = connection.createStatement()) {
+
                     String createChatStatusTable = """
                         CREATE TABLE IF NOT EXISTS chat_status (
                             chat_id LONG PRIMARY KEY,

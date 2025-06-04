@@ -5,10 +5,9 @@
 I've removed the databases from the commit (you'll need to create these with the
 right names), as well as the bottoken (should allow the user to give their own).
 
-
 Written in Java.
 
-Based off of the tutoiral here:
+Based off of the tutorial here:
 https://rubenlagus.github.io/TelegramBotsDocumentation/java-telegram-bot-tutorial.html
 
 ## Functions:

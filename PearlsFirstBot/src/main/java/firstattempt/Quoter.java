@@ -1,11 +1,8 @@
 package firstattempt;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.Random;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -15,7 +12,10 @@ import java.sql.SQLException;
 public class Quoter {
 
     private final Logger logger;
-    private static final String DB_URL = "jdbc:sqlite:src/main/resources/databases/fortunes.db";
+ //   private static final String DB_URL = "jdbc:sqlite:src/main/resources/databases/fortunes.db";
+
+    static String dbPath = "databases/fortunes.db";
+    static String DB_URL = "jdbc:sqlite:%s".formatted(BotDatabase.class.getResourceAsStream(dbPath));
 
     public Quoter() {
         logger = LoggerFactory.getLogger(Quoter.class);
